@@ -1,73 +1,113 @@
-# React + TypeScript + Vite
+# WebhookHub - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + TypeScript dashboard for managing webhook subscriptions and monitoring event deliveries in real-time.
 
-Currently, two official plugins are available:
+**Live App:** https://webhook-platform-frontend.vercel.app  
+**Backend API:** https://webhook-platform-backend-production.up.railway.app/api
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Auth** -- Register, login, and auto-logout on token expiry
+- **Subscription Management** -- Create, view, cancel, and delete webhook subscriptions
+- **Real-time Event Feed** -- Live SSE stream shows delivery status updates as they happen
+- **Event History** -- Paginated list of all events with status, retry count, and timestamps
+- **Event Detail View** -- Full payload, headers, delivery attempts, and error messages
+- **Manual Retry** -- Re-queue permanently failed events with one click
+- **Send Test Event** -- Built-in button to fire sample webhooks for instant testing (no curl needed)
+- **Event Filtering** -- Configure subscriptions to only accept specific event types
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Tech Stack
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+| Layer | Technology |
+|-------|-----------|
+| Framework | React 18 + TypeScript |
+| Build | Vite |
+| Routing | React Router v6 |
+| State | Zustand (auth) + TanStack Query (server state) |
+| HTTP | Axios with JWT interceptors |
+| Real-time | EventSource (SSE) |
+| Icons | Lucide React |
+| Notifications | React Hot Toast |
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+---
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Design Choices
+
+### Zustand for Auth, TanStack Query for Server State
+Auth state (token, user) is global and synchronous -- Zustand is perfect for this. Server data (subscriptions, events) benefits from caching, invalidation, and pagination -- TanStack Query handles all of this out of the box.
+
+### SSE via EventSource API
+The browser's native `EventSource` API gives us real-time updates with zero dependencies. It auto-reconnects on network drops and works over standard HTTP. Since `EventSource` can't set headers, JWT is passed as a query parameter.
+
+### Inline Styles
+The app uses inline styles with CSS custom properties (defined in `index.css`). This keeps the styling co-located with components, avoids class name collisions, and makes the component files self-contained.
+
+### Send Test Event Button
+A built-in "Send Test" button on the dashboard lets reviewers test the full webhook flow without curl, Postman, or any external tool. It picks a random sample event (Stripe payment, GitHub push, Shopify order, etc.) and fires it directly at the subscription's incoming webhook URL.
+
+---
+
+## Pages
+
+| Route | Page | Description |
+|-------|------|-------------|
+| `/login` | Login | Email + password login |
+| `/register` | Register | New user registration |
+| `/dashboard` | Dashboard | List all subscriptions with stats |
+| `/subscriptions/new` | New Subscription | Create a webhook subscription |
+| `/subscriptions/:id` | Subscription Detail | Live feed + event history + endpoint info |
+| `/subscriptions/:id/events/:eventId` | Event Detail | Full payload, headers, delivery log |
+
+---
+
+## Local Setup
+
+### Prerequisites
+- Node.js 18+
+- Backend server running (see [backend repo](https://github.com/Dhruv-Gupta01/webhook-platform-backend))
+
+### 1. Clone and install
+
+```bash
+git clone https://github.com/Dhruv-Gupta01/webhook-platform-frontend.git
+cd webhook-platform-frontend
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 2. Configure environment (optional)
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+For local development, the Vite dev server proxies `/api` to `localhost:3000` automatically. No env file needed.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+For connecting to the deployed backend instead:
+
+```bash
+echo "VITE_API_URL=https://webhook-platform-backend-production.up.railway.app" > .env
 ```
+
+### 3. Start the dev server
+
+```bash
+npm run dev
+```
+
+Opens at `http://localhost:5173`.
+
+---
+
+## Quick Test (deployed version)
+
+1. Go to https://webhook-platform-frontend.vercel.app
+2. Register a new account
+3. Create a subscription (use `https://httpbin.org/post` as the callback URL)
+4. Click **Send test** on the dashboard to fire a sample webhook
+5. Click **View events** to see real-time delivery status
+
+---
+
+## Related
+
+- **Backend repo:** https://github.com/Dhruv-Gupta01/webhook-platform-backend
