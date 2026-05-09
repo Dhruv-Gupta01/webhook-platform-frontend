@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { Copy, Check, ArrowLeft } from 'lucide-react'
+import { Copy, Check, ArrowLeft, Key } from 'lucide-react'
 import { createSubscription } from '../api/subscriptions'
 import Layout from '../components/Layout'
 import type { WebhookSubscription } from '../types'
@@ -11,12 +11,8 @@ export default function NewSubscriptionPage() {
   const navigate = useNavigate()
   const [created, setCreated] = useState<WebhookSubscription | null>(null)
   const [copied, setCopied] = useState(false)
-  const [form, setForm] = useState({
-    name: '',
-    sourceUrl: '',
-    callbackUrl: '',
-    events: '',
-  })
+  const [focused, setFocused] = useState<string | null>(null)
+  const [form, setForm] = useState({ name: '', sourceUrl: '', callbackUrl: '', events: '' })
 
   const mutation = useMutation({
     mutationFn: createSubscription,
@@ -43,63 +39,88 @@ export default function NewSubscriptionPage() {
     if (created) {
       navigator.clipboard.writeText(created.webhookEndpoint)
       setCopied(true)
+      toast.success('Endpoint copied')
       setTimeout(() => setCopied(false), 2000)
     }
   }
 
-  // Show success state after creation
+  const inputStyle = (field: string): React.CSSProperties => ({
+    font: '400 13px var(--font-sans)',
+    color: 'var(--fg)',
+    background: 'var(--surface)',
+    border: `1px solid ${focused === field ? 'var(--accent)' : 'var(--border-strong)'}`,
+    borderRadius: 'var(--radius-md)',
+    padding: '8px 12px',
+    outline: 'none',
+    boxShadow: focused === field ? '0 0 0 3px var(--accent-soft)' : 'none',
+    transition: 'all 150ms var(--ease-out)',
+    width: '100%',
+  })
+
   if (created) {
     return (
       <Layout>
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-xl border border-gray-200 p-8">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-green-100 text-green-600 rounded-full p-2">
-                <Check size={20} />
+        <div style={{ maxWidth: 640, margin: '0 auto' }}>
+          <div style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-xl)',
+            padding: 28,
+            boxShadow: 'var(--shadow-2)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--success-soft)', color: 'var(--success)', display: 'grid', placeItems: 'center' }}>
+                <Check size={18} />
               </div>
-              <h2 className="text-xl font-semibold text-gray-900">Subscription Created!</h2>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, letterSpacing: '-0.02em', color: 'var(--fg)', margin: 0, fontWeight: 400 }}>
+                Subscription created
+              </h2>
             </div>
 
-            {/* The most important part — the webhook endpoint */}
-            <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-6">
-              <p className="text-sm font-medium text-indigo-800 mb-2">
-                📌 Your Webhook Endpoint
-              </p>
-              <p className="text-xs text-indigo-600 mb-3">
+            {/* Webhook endpoint */}
+            <div style={{ background: 'var(--accent-soft)', border: '1px solid rgba(79,70,229,0.25)', borderRadius: 'var(--radius-md)', padding: 14, marginBottom: 16 }}>
+              <div style={{ font: '600 12px var(--font-sans)', color: 'var(--accent-soft-fg)', marginBottom: 4 }}>Your webhook endpoint</div>
+              <div style={{ font: '12px var(--font-sans)', color: 'var(--fg-2)', marginBottom: 10 }}>
                 Copy this URL and paste it into GitHub, Stripe, or any other service as their webhook destination.
-              </p>
-              <div className="flex items-center gap-2 bg-white rounded-lg border border-indigo-200 p-3">
-                <code className="text-xs text-gray-700 flex-1 break-all">{created.webhookEndpoint}</code>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '8px 10px' }}>
+                <code style={{ flex: 1, font: '12px var(--font-mono)', color: 'var(--fg)', wordBreak: 'break-all' }}>{created.webhookEndpoint}</code>
                 <button
                   onClick={copyEndpoint}
-                  className="flex-shrink-0 text-indigo-600 hover:text-indigo-800 transition"
+                  style={{ background: 'transparent', border: 0, color: 'var(--accent)', cursor: 'pointer', padding: 4, flexShrink: 0 }}
                 >
-                  {copied ? <Check size={16} /> : <Copy size={16} />}
+                  {copied ? <Check size={14} /> : <Copy size={14} />}
                 </button>
               </div>
             </div>
 
-            {/* Secret */}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-              <p className="text-sm font-medium text-yellow-800 mb-1">🔑 Signing Secret</p>
-              <p className="text-xs text-yellow-700 mb-2">
-                Use this secret in your source to sign webhook payloads (HMAC-SHA256). Save it now — it won't be shown again in full.
-              </p>
-              <code className="text-xs text-gray-700 break-all">{created.secret}</code>
+            {/* Signing secret */}
+            <div style={{ background: 'var(--warn-soft)', border: '1px solid rgba(180,83,9,0.25)', borderRadius: 'var(--radius-md)', padding: 14, marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, font: '600 12px var(--font-sans)', color: 'var(--warn-fg)', marginBottom: 4 }}>
+                <Key size={13} /> Signing secret
+              </div>
+              <div style={{ font: '12px var(--font-sans)', color: 'var(--fg-2)', marginBottom: 8 }}>
+                Use this secret to sign webhook payloads (HMAC-SHA256). Save it now — it won't be shown again in full.
+              </div>
+              <code style={{ font: '12px var(--font-mono)', color: 'var(--fg)', wordBreak: 'break-all' }}>{created.secret}</code>
             </div>
 
-            <div className="flex gap-3">
+            <div style={{ display: 'flex', gap: 10 }}>
               <button
                 onClick={() => navigate(`/subscriptions/${created.id}`)}
-                className="flex-1 bg-indigo-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-indigo-700 transition"
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 14px', background: 'var(--accent)', color: 'var(--fg-on-accent)', font: '500 13px var(--font-sans)', borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer', transition: 'background 150ms var(--ease-out)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-hover)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--accent)' }}
               >
-                View Events Dashboard
+                View events dashboard
               </button>
               <button
                 onClick={() => navigate('/dashboard')}
-                className="flex-1 border border-gray-300 text-gray-700 rounded-lg py-2 text-sm hover:bg-gray-50 transition"
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 14px', background: 'var(--surface)', color: 'var(--fg)', font: '500 13px var(--font-sans)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', cursor: 'pointer', transition: 'background 150ms var(--ease-out)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-2)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface)' }}
               >
-                Back to Dashboard
+                Back to dashboard
               </button>
             </div>
           </div>
@@ -110,77 +131,85 @@ export default function NewSubscriptionPage() {
 
   return (
     <Layout>
-      <div className="max-w-2xl mx-auto">
-        <button
+      <div style={{ maxWidth: 640, margin: '0 auto' }}>
+        <a
           onClick={() => navigate(-1)}
-          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-6"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '13px var(--font-sans)', color: 'var(--fg-3)', cursor: 'pointer', marginBottom: 18, textDecoration: 'none' }}
         >
-          <ArrowLeft size={16} /> Back
-        </button>
+          <ArrowLeft size={14} /> Back
+        </a>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-8">
-          <h1 className="text-xl font-semibold text-gray-900 mb-1">New Webhook Subscription</h1>
-          <p className="text-sm text-gray-500 mb-6">
+        <div style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-xl)',
+          padding: 28,
+          boxShadow: 'var(--shadow-2)',
+        }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, letterSpacing: '-0.02em', color: 'var(--fg)', margin: 0, fontWeight: 400 }}>
+            New webhook subscription
+          </h1>
+          <p style={{ font: '13px var(--font-sans)', color: 'var(--fg-3)', margin: '6px 0 24px' }}>
             We'll give you a URL to paste into your source service. Events will be forwarded to your callback URL.
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <Field label="Name" hint="A friendly label for this subscription">
               <input
-                required
-                value={form.name}
+                required value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="My GitHub Webhook"
-                className={inputClass}
+                onFocus={() => setFocused('name')} onBlur={() => setFocused(null)}
+                placeholder="My GitHub webhook"
+                style={inputStyle('name')}
               />
             </Field>
 
-            <Field
-              label="Source URL"
-              hint="The service sending events to you (e.g. https://github.com)"
-            >
+            <Field label="Source URL" hint="The service sending events to you">
               <input
-                required
-                type="url"
-                value={form.sourceUrl}
+                required type="url" value={form.sourceUrl}
                 onChange={(e) => setForm({ ...form, sourceUrl: e.target.value })}
+                onFocus={() => setFocused('sourceUrl')} onBlur={() => setFocused(null)}
                 placeholder="https://github.com"
-                className={inputClass}
+                style={inputStyle('sourceUrl')}
               />
             </Field>
 
-            <Field
-              label="Callback URL"
-              hint="Your server endpoint where we forward processed events"
-            >
+            <Field label="Callback URL" hint="Your server endpoint where we forward processed events">
               <input
-                required
-                type="url"
-                value={form.callbackUrl}
+                required type="url" value={form.callbackUrl}
                 onChange={(e) => setForm({ ...form, callbackUrl: e.target.value })}
+                onFocus={() => setFocused('callbackUrl')} onBlur={() => setFocused(null)}
                 placeholder="https://myapp.com/webhook-handler"
-                className={inputClass}
+                style={inputStyle('callbackUrl')}
               />
             </Field>
 
-            <Field
-              label="Event Filter (optional)"
-              hint="Comma-separated event types to accept. Leave blank to accept all."
-            >
+            <Field label="Event filter" hint="Comma-separated event types to accept. Leave blank to accept all.">
               <input
                 value={form.events}
                 onChange={(e) => setForm({ ...form, events: e.target.value })}
+                onFocus={() => setFocused('events')} onBlur={() => setFocused(null)}
                 placeholder="push, pull_request, payment.succeeded"
-                className={inputClass}
+                style={inputStyle('events')}
               />
             </Field>
 
             <button
               type="submit"
               disabled={mutation.isPending}
-              className="w-full bg-indigo-600 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: '10px 14px', marginTop: 4,
+                background: 'var(--accent)', color: 'var(--fg-on-accent)',
+                font: '500 13px var(--font-sans)',
+                borderRadius: 'var(--radius-md)', border: 'none', cursor: mutation.isPending ? 'not-allowed' : 'pointer',
+                opacity: mutation.isPending ? 0.6 : 1,
+                transition: 'background 150ms var(--ease-out)',
+              }}
+              onMouseEnter={(e) => { if (!mutation.isPending) e.currentTarget.style.background = 'var(--accent-hover)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--accent)' }}
             >
-              {mutation.isPending ? 'Creating...' : 'Create Subscription'}
+              {mutation.isPending ? 'Creating…' : 'Create subscription'}
             </button>
           </form>
         </div>
@@ -189,21 +218,12 @@ export default function NewSubscriptionPage() {
   )
 }
 
-const inputClass =
-  'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
-
-function Field({
-  label, hint, children,
-}: {
-  label: string
-  hint?: string
-  children: React.ReactNode
-}) {
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <label style={{ font: '500 12px var(--font-sans)', color: 'var(--fg-2)' }}>{label}</label>
       {children}
-      {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
+      {hint && <span style={{ font: '11px var(--font-sans)', color: 'var(--fg-3)' }}>{hint}</span>}
     </div>
   )
 }

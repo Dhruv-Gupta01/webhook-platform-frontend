@@ -1,12 +1,92 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap');
 
-* {
-  box-sizing: border-box;
+/* ── Design tokens ─────────────────────────────────────────── */
+:root {
+  --bg:             #FAF9F6;
+  --surface:        #FFFFFF;
+  --surface-2:      #F4F2EC;
+  --surface-3:      #ECE9E1;
+
+  --border:         #E8E4DA;
+  --border-strong:  #D4CFC1;
+  --border-focus:   #4F46E5;
+
+  --fg:             #1A1814;
+  --fg-2:           #4A453E;
+  --fg-3:           #837C6E;
+  --fg-muted:       #B5AE9F;
+  --fg-on-accent:   #FFFFFF;
+
+  --accent:         #4F46E5;
+  --accent-hover:   #4338CA;
+  --accent-press:   #3730A3;
+  --accent-soft:    #EEF0FF;
+  --accent-soft-fg: #3730A3;
+
+  --success:        #15803D;
+  --success-soft:   #DCFCE7;
+  --success-fg:     #166534;
+
+  --info:           #1D4ED8;
+  --info-soft:      #DBEAFE;
+  --info-fg:        #1E40AF;
+
+  --warn:           #B45309;
+  --warn-soft:      #FEF3C7;
+  --warn-fg:        #92400E;
+
+  --danger:         #B91C1C;
+  --danger-soft:    #FEE2E2;
+  --danger-fg:      #991B1B;
+
+  --live:           #DC2626;
+
+  --font-display: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+  --font-sans:    'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono:    'Geist Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   14px;
+  --radius-xl:   20px;
+  --radius-full: 9999px;
+
+  --shadow-1: 0 1px 2px rgba(20,17,13,.04), 0 1px 1px rgba(20,17,13,.03);
+  --shadow-2: 0 4px 12px rgba(20,17,13,.06), 0 2px 4px rgba(20,17,13,.04);
+  --shadow-3: 0 16px 48px rgba(20,17,13,.10), 0 4px 16px rgba(20,17,13,.06);
+  --shadow-focus: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+
+  --nav-height: 56px;
+  --max-content: 1120px;
 }
+
+/* ── Base ──────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
 
 body {
-  margin: 0;
-  font-family: system-ui, -apple-system, sans-serif;
-  background-color: #f9fafb;
-  color: #111827;
+  background: var(--bg);
+  color: var(--fg-2);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+/* ── Animations ────────────────────────────────────────────── */
+@keyframes wh-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+.wh-pulse { animation: wh-pulse 1.5s ease-in-out infinite; }
+
+@keyframes wh-fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.wh-fade-in { animation: wh-fade-in 150ms var(--ease-out) both; }

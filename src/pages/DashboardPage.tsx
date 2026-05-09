@@ -1,10 +1,12 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { Plus, Webhook, Activity, XCircle, Trash2, ExternalLink } from 'lucide-react'
+import { Webhook, Activity, XCircle, ExternalLink, Trash2, Plus } from 'lucide-react'
 import { getSubscriptions, cancelSubscription, deleteSubscription } from '../api/subscriptions'
 import { useAuthStore } from '../store/auth.store'
 import Layout from '../components/Layout'
+import StatusBadge from '../components/StatusBadge'
 import type { WebhookSubscription } from '../types'
 
 export default function DashboardPage() {
@@ -40,46 +42,47 @@ export default function DashboardPage() {
   return (
     <Layout>
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 28, gap: 16 }}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Welcome back, {user?.name || user?.email} 👋
+          <h1 style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 36, lineHeight: 1.1,
+            letterSpacing: '-0.02em',
+            color: 'var(--fg)', margin: 0, fontWeight: 400,
+          }}>
+            Welcome back, {user?.name || user?.email?.split('@')[0]} 👋
           </h1>
-          <p className="text-gray-500 text-sm mt-1">Manage your webhook subscriptions</p>
+          <p style={{ font: '13px var(--font-sans)', color: 'var(--fg-3)', margin: '6px 0 0' }}>
+            Manage your webhook subscriptions.
+          </p>
         </div>
-        <Link
-          to="/subscriptions/new"
-          className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition"
-        >
-          <Plus size={16} /> New Subscription
-        </Link>
+        <PrimaryButton to="/subscriptions/new" icon={<Plus size={14} />}>
+          New subscription
+        </PrimaryButton>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        <StatCard icon={<Webhook size={20} />} label="Total" value={subscriptions.length} color="indigo" />
-        <StatCard icon={<Activity size={20} />} label="Active" value={active} color="green" />
-        <StatCard icon={<XCircle size={20} />} label="Cancelled" value={inactive} color="red" />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }}>
+        <StatCard icon={<Webhook size={18} />} label="Total" value={subscriptions.length} tint="indigo" />
+        <StatCard icon={<Activity size={18} />} label="Active" value={active} tint="green" />
+        <StatCard icon={<XCircle size={18} />} label="Cancelled" value={inactive} tint="red" />
       </div>
 
-      {/* Subscription List */}
+      {/* List */}
       {isLoading ? (
-        <div className="text-center py-16 text-gray-400">Loading...</div>
+        <div style={{ textAlign: 'center', padding: '64px 0', font: '13px var(--font-sans)', color: 'var(--fg-3)' }}>
+          Loading…
+        </div>
       ) : subscriptions.length === 0 ? (
         <EmptyState />
       ) : (
-        <div className="space-y-3">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {subscriptions.map((sub) => (
-            <SubscriptionCard
+            <SubRow
               key={sub.id}
               sub={sub}
-              onCancel={() => {
-                if (confirm('Cancel this subscription?')) cancelMutation.mutate(sub.id)
-              }}
-              onDelete={() => {
-                if (confirm('Permanently delete this subscription and all its events?'))
-                  deleteMutation.mutate(sub.id)
-              }}
+              onCancel={() => { if (confirm('Cancel this subscription?')) cancelMutation.mutate(sub.id) }}
+              onDelete={() => { if (confirm('Permanently delete this subscription and all its events?')) deleteMutation.mutate(sub.id) }}
             />
           ))}
         </div>
@@ -88,73 +91,88 @@ export default function DashboardPage() {
   )
 }
 
-function StatCard({
-  icon, label, value, color,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: number
-  color: 'indigo' | 'green' | 'red'
-}) {
-  const colors = {
-    indigo: 'bg-indigo-50 text-indigo-600',
-    green:  'bg-green-50  text-green-600',
-    red:    'bg-red-50    text-red-600',
+function StatCard({ icon, label, value, tint }: { icon: React.ReactNode; label: string; value: number; tint: 'indigo' | 'green' | 'red' }) {
+  const tints = {
+    indigo: { bg: 'var(--accent-soft)',   fg: 'var(--accent)' },
+    green:  { bg: 'var(--success-soft)',  fg: 'var(--success)' },
+    red:    { bg: 'var(--danger-soft)',   fg: 'var(--danger)' },
   }
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-center gap-4">
-      <div className={`p-2 rounded-lg ${colors[color]}`}>{icon}</div>
+    <div style={{
+      background: 'var(--surface)',
+      border: '1px solid var(--border)',
+      borderRadius: 'var(--radius-lg)',
+      padding: 18,
+      display: 'flex', alignItems: 'center', gap: 14,
+      boxShadow: 'var(--shadow-1)',
+    }}>
+      <div style={{
+        width: 40, height: 40, borderRadius: 'var(--radius-md)',
+        display: 'grid', placeItems: 'center',
+        background: tints[tint].bg, color: tints[tint].fg,
+        flexShrink: 0,
+      }}>
+        {icon}
+      </div>
       <div>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
-        <p className="text-sm text-gray-500">{label}</p>
+        <div style={{ font: '600 28px var(--font-display)', letterSpacing: '-0.02em', lineHeight: 1.1, color: 'var(--fg)' }}>
+          {value}
+        </div>
+        <div style={{ font: '13px var(--font-sans)', color: 'var(--fg-3)', marginTop: 2 }}>{label}</div>
       </div>
     </div>
   )
 }
 
-function SubscriptionCard({
-  sub, onCancel, onDelete,
-}: {
-  sub: WebhookSubscription
-  onCancel: () => void
-  onDelete: () => void
-}) {
+function SubRow({ sub, onCancel, onDelete }: { sub: WebhookSubscription; onCancel: () => void; onDelete: () => void }) {
+  const [hover, setHover] = useState(false)
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-center justify-between gap-4">
-      <div className="flex items-center gap-4 min-w-0">
-        <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${sub.isActive ? 'bg-green-500' : 'bg-gray-300'}`} />
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-gray-900 truncate">{sub.name}</span>
-            {!sub.isActive && (
-              <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">cancelled</span>
-            )}
-          </div>
-          <p className="text-xs text-gray-400 truncate mt-0.5">{sub.sourceUrl}</p>
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 16, padding: '14px 18px',
+        background: hover ? 'var(--surface-2)' : 'var(--surface)',
+        border: `1px solid ${hover ? 'var(--border-strong)' : 'var(--border)'}`,
+        borderRadius: 'var(--radius-lg)',
+        transition: 'all 150ms var(--ease-out)',
+        boxShadow: 'var(--shadow-1)',
+      }}
+    >
+      <span style={{
+        width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+        background: sub.isActive ? 'var(--success)' : 'var(--fg-muted)',
+      }} />
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ font: '500 14px var(--font-sans)', color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {sub.name}
+          </span>
+          {!sub.isActive && <StatusBadge status="cancelled" withDot={false} />}
+        </div>
+        <div style={{ font: '12px var(--font-mono)', color: 'var(--fg-3)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {sub.sourceUrl}
         </div>
       </div>
 
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
         <Link
           to={`/subscriptions/${sub.id}`}
-          className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '500 12px var(--font-sans)', color: 'var(--accent)', textDecoration: 'none' }}
         >
-          <ExternalLink size={14} /> View Events
+          <ExternalLink size={13} /> View events
         </Link>
         {sub.isActive && (
-          <button
-            onClick={onCancel}
-            className="text-xs text-gray-400 hover:text-orange-500 px-2 py-1 rounded border border-gray-200 hover:border-orange-300 transition"
-          >
-            Cancel
-          </button>
+          <SecondaryButton size="sm" onClick={onCancel}>Cancel</SecondaryButton>
         )}
         <button
           onClick={onDelete}
-          className="text-gray-400 hover:text-red-500 transition"
-          title="Delete permanently"
+          style={{ background: 'transparent', border: 0, padding: 6, color: 'var(--fg-3)', cursor: 'pointer', borderRadius: 'var(--radius-sm)', transition: 'all 150ms var(--ease-out)', display: 'grid', placeItems: 'center' }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.background = 'var(--danger-soft)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--fg-3)'; e.currentTarget.style.background = 'transparent' }}
         >
-          <Trash2 size={15} />
+          <Trash2 size={14} />
         </button>
       </div>
     </div>
@@ -163,16 +181,71 @@ function SubscriptionCard({
 
 function EmptyState() {
   return (
-    <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
-      <Webhook size={40} className="mx-auto text-gray-300 mb-3" />
-      <p className="text-gray-500 font-medium">No subscriptions yet</p>
-      <p className="text-gray-400 text-sm mb-4">Create your first webhook subscription to get started</p>
-      <Link
-        to="/subscriptions/new"
-        className="inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition"
-      >
-        <Plus size={16} /> New Subscription
-      </Link>
+    <div style={{
+      background: 'var(--surface)',
+      border: '1px dashed var(--border-strong)',
+      borderRadius: 'var(--radius-lg)',
+      padding: '48px 20px',
+      textAlign: 'center',
+    }}>
+      <div style={{ color: 'var(--fg-muted)', marginBottom: 14, display: 'flex', justifyContent: 'center' }}>
+        <Webhook size={36} />
+      </div>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, letterSpacing: '-0.02em', color: 'var(--fg)' }}>
+        No subscriptions yet
+      </div>
+      <div style={{ font: '13px var(--font-sans)', color: 'var(--fg-3)', marginTop: 6 }}>
+        Create your first webhook subscription to get started.
+      </div>
+      <div style={{ marginTop: 18 }}>
+        <PrimaryButton to="/subscriptions/new" icon={<Plus size={14} />}>
+          New subscription
+        </PrimaryButton>
+      </div>
     </div>
+  )
+}
+
+function PrimaryButton({ to, icon, children }: { to: string; icon?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <Link
+      to={to}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '8px 14px',
+        background: 'var(--accent)', color: 'var(--fg-on-accent)',
+        font: '500 13px var(--font-sans)',
+        borderRadius: 'var(--radius-md)', border: '1px solid transparent',
+        textDecoration: 'none',
+        transition: 'all 150ms var(--ease-out)',
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-hover)' }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--accent)' }}
+    >
+      {icon}{children}
+    </Link>
+  )
+}
+
+function SecondaryButton({ size = 'md', onClick, children }: { size?: 'sm' | 'md'; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: size === 'sm' ? '5px 10px' : '8px 14px',
+        fontSize: size === 'sm' ? 12 : 13,
+        background: 'var(--surface)', color: 'var(--fg)',
+        font: `500 ${size === 'sm' ? 12 : 13}px var(--font-sans)`,
+        borderRadius: 'var(--radius-md)',
+        border: '1px solid var(--border-strong)',
+        cursor: 'pointer',
+        transition: 'all 150ms var(--ease-out)',
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-2)' }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface)' }}
+    >
+      {children}
+    </button>
   )
 }
