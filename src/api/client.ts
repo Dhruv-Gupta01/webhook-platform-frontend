@@ -1,0 +1,26 @@
+import axios from 'axios'
+
+// All requests go to /api — Vite proxies to localhost:3000 in dev
+const client = axios.create({ baseURL: '/api' })
+
+// Request interceptor — attach JWT from localStorage to every request
+client.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token')
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
+
+// Response interceptor — auto-logout on 401 (token expired or invalid)
+client.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      window.location.href = '/login'
+    }
+    return Promise.reject(err)
+  },
+)
+
+export default client
