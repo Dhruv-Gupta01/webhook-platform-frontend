@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { Webhook, Activity, XCircle, ExternalLink, Trash2, Plus } from 'lucide-react'
+import { Webhook, Activity, XCircle, ExternalLink, Trash2, Plus, Zap } from 'lucide-react'
 import { getSubscriptions, cancelSubscription, deleteSubscription } from '../api/subscriptions'
 import { useAuthStore } from '../store/auth.store'
 import Layout from '../components/Layout'
@@ -124,8 +124,38 @@ function StatCard({ icon, label, value, tint }: { icon: React.ReactNode; label: 
   )
 }
 
+const TEST_EVENTS = [
+  { type: 'payment.succeeded', data: { id: 'evt_001', amount: 2999, currency: 'INR', customer: 'alice@example.com' } },
+  { type: 'push', data: { ref: 'refs/heads/main', repository: 'myorg/my-repo', pusher: 'bob' } },
+  { type: 'order.created', data: { orderId: 'ORD-1042', customer: 'charlie@example.com', total: 1598 } },
+  { type: 'payment.failed', data: { id: 'evt_002', amount: 499, reason: 'insufficient_funds' } },
+  { type: 'user.signup', data: { userId: 'usr_9981', email: 'eve@example.com', plan: 'pro' } },
+]
+
 function SubRow({ sub, onCancel, onDelete }: { sub: WebhookSubscription; onCancel: () => void; onDelete: () => void }) {
   const [hover, setHover] = useState(false)
+  const [sending, setSending] = useState(false)
+
+  const sendTest = async () => {
+    if (sending) return
+    setSending(true)
+    const event = TEST_EVENTS[Math.floor(Math.random() * TEST_EVENTS.length)]
+    try {
+      const res = await fetch(sub.webhookEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-event-type': event.type },
+        body: JSON.stringify(event.data),
+      })
+      const data = await res.json()
+      if (data.received) toast.success(`Sent ${event.type}`)
+      else toast(`Filtered out (${event.type})`, { icon: '🔕' })
+    } catch {
+      toast.error('Failed to send')
+    } finally {
+      setSending(false)
+    }
+  }
+
   return (
     <div
       onMouseEnter={() => setHover(true)}
@@ -157,6 +187,25 @@ function SubRow({ sub, onCancel, onDelete }: { sub: WebhookSubscription; onCance
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+        {sub.isActive && (
+          <button
+            onClick={sendTest}
+            disabled={sending}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              padding: '5px 10px',
+              background: sending ? 'var(--surface-2)' : 'var(--accent)',
+              color: sending ? 'var(--fg-3)' : 'var(--fg-on-accent)',
+              font: '500 12px var(--font-sans)',
+              borderRadius: 'var(--radius-md)',
+              border: 'none',
+              cursor: sending ? 'not-allowed' : 'pointer',
+              transition: 'opacity 150ms',
+            }}
+          >
+            <Zap size={12} /> {sending ? 'Sending…' : 'Send test'}
+          </button>
+        )}
         <Link
           to={`/subscriptions/${sub.id}`}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '500 12px var(--font-sans)', color: 'var(--accent)', textDecoration: 'none' }}
