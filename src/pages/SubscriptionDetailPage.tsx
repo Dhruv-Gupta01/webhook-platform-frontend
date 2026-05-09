@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Copy, Check, Clock, Zap } from 'lucide-react'
@@ -10,6 +10,14 @@ import Layout from '../components/Layout'
 import StatusBadge from '../components/StatusBadge'
 import type { SSEEventUpdate, WebhookEvent } from '../types'
 
+const SAMPLE_EVENTS = [
+  { type: 'payment.succeeded', source: 'Stripe', data: { id: 'evt_001', amount: 2999, currency: 'INR', customer: 'alice@example.com', status: 'succeeded' } },
+  { type: 'push', source: 'GitHub', data: { ref: 'refs/heads/main', repository: 'myorg/my-repo', pusher: 'bob', commits: [{ id: 'abc123', message: 'Fix login bug' }] } },
+  { type: 'order.created', source: 'Shopify', data: { orderId: 'ORD-1042', customer: 'charlie@example.com', items: [{ sku: 'TSHIRT-L', qty: 2, price: 799 }], total: 1598 } },
+  { type: 'payment.failed', source: 'Stripe', data: { id: 'evt_002', amount: 499, currency: 'INR', customer: 'dave@example.com', reason: 'insufficient_funds' } },
+  { type: 'user.signup', source: 'Custom', data: { userId: 'usr_9981', email: 'eve@example.com', plan: 'pro', signupSource: 'google_oauth' } },
+]
+
 export default function SubscriptionDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -18,37 +26,6 @@ export default function SubscriptionDetailPage() {
   const [liveEvents, setLiveEvents] = useState<SSEEventUpdate[]>([])
   const [copiedEndpoint, setCopiedEndpoint] = useState(false)
   const [sending, setSending] = useState(false)
-
-  const SAMPLE_EVENTS = [
-    { type: 'payment.succeeded', source: 'Stripe', data: { id: 'evt_001', amount: 2999, currency: 'INR', customer: 'alice@example.com', status: 'succeeded' } },
-    { type: 'push', source: 'GitHub', data: { ref: 'refs/heads/main', repository: 'myorg/my-repo', pusher: 'bob', commits: [{ id: 'abc123', message: 'Fix login bug' }] } },
-    { type: 'order.created', source: 'Shopify', data: { orderId: 'ORD-1042', customer: 'charlie@example.com', items: [{ sku: 'TSHIRT-L', qty: 2, price: 799 }], total: 1598 } },
-    { type: 'payment.failed', source: 'Stripe', data: { id: 'evt_002', amount: 499, currency: 'INR', customer: 'dave@example.com', reason: 'insufficient_funds' } },
-    { type: 'user.signup', source: 'Custom', data: { userId: 'usr_9981', email: 'eve@example.com', plan: 'pro', signupSource: 'google_oauth' } },
-  ]
-
-  const sendTestEvent = useCallback(async () => {
-    if (!sub || sending) return
-    setSending(true)
-    const event = SAMPLE_EVENTS[Math.floor(Math.random() * SAMPLE_EVENTS.length)]
-    try {
-      const res = await fetch(sub.webhookEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-event-type': event.type },
-        body: JSON.stringify(event.data),
-      })
-      const data = await res.json()
-      if (data.received) {
-        toast.success(`Sent ${event.type} event`)
-      } else {
-        toast(`Event filtered out (${event.type} not in filter)`, { icon: '🔕' })
-      }
-    } catch {
-      toast.error('Failed to send test event')
-    } finally {
-      setSending(false)
-    }
-  }, [sub, sending])
 
   const { data: sub, isLoading: subLoading } = useQuery({
     queryKey: ['subscription', id],
@@ -77,6 +54,29 @@ export default function SubscriptionDetailPage() {
       setCopiedEndpoint(true)
       toast.success('Endpoint copied')
       setTimeout(() => setCopiedEndpoint(false), 2000)
+    }
+  }
+
+  const sendTestEvent = async () => {
+    if (!sub || sending) return
+    setSending(true)
+    const event = SAMPLE_EVENTS[Math.floor(Math.random() * SAMPLE_EVENTS.length)]
+    try {
+      const res = await fetch(sub.webhookEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-event-type': event.type },
+        body: JSON.stringify(event.data),
+      })
+      const data = await res.json()
+      if (data.received) {
+        toast.success(`Sent ${event.type} event`)
+      } else {
+        toast(`Event filtered out (${event.type} not in filter)`, { icon: '🔕' })
+      }
+    } catch {
+      toast.error('Failed to send test event')
+    } finally {
+      setSending(false)
     }
   }
 
