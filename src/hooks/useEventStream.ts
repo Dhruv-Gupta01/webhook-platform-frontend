@@ -17,7 +17,8 @@ export function useEventStream(
     if (!token || !subscriptionId) return
 
     // EventSource can't set headers — pass JWT as query param instead
-    const url = `/api/webhooks/${subscriptionId}/events/stream?token=${token}`
+    const apiBase = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api'
+    const url = `${apiBase}/webhooks/${subscriptionId}/events/stream?token=${token}`
     const es = new EventSource(url)
 
     es.onmessage = (e) => {

@@ -1,7 +1,9 @@
 import axios from 'axios'
 
-// All requests go to /api — Vite proxies to localhost:3000 in dev
-const client = axios.create({ baseURL: '/api' })
+// In dev: Vite proxies /api → localhost:3000
+// In prod: VITE_API_URL points to the Railway backend (e.g. https://xxx.railway.app)
+const baseURL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api'
+const client = axios.create({ baseURL })
 
 // Request interceptor — attach JWT from localStorage to every request
 client.interceptors.request.use((config) => {
