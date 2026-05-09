@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Copy, Check, Clock } from 'lucide-react'
+import { ArrowLeft, Copy, Check, Clock, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getSubscription } from '../api/subscriptions'
 import { getEvents } from '../api/events'
@@ -17,6 +17,38 @@ export default function SubscriptionDetailPage() {
   const [page, setPage] = useState(1)
   const [liveEvents, setLiveEvents] = useState<SSEEventUpdate[]>([])
   const [copiedEndpoint, setCopiedEndpoint] = useState(false)
+  const [sending, setSending] = useState(false)
+
+  const SAMPLE_EVENTS = [
+    { type: 'payment.succeeded', source: 'Stripe', data: { id: 'evt_001', amount: 2999, currency: 'INR', customer: 'alice@example.com', status: 'succeeded' } },
+    { type: 'push', source: 'GitHub', data: { ref: 'refs/heads/main', repository: 'myorg/my-repo', pusher: 'bob', commits: [{ id: 'abc123', message: 'Fix login bug' }] } },
+    { type: 'order.created', source: 'Shopify', data: { orderId: 'ORD-1042', customer: 'charlie@example.com', items: [{ sku: 'TSHIRT-L', qty: 2, price: 799 }], total: 1598 } },
+    { type: 'payment.failed', source: 'Stripe', data: { id: 'evt_002', amount: 499, currency: 'INR', customer: 'dave@example.com', reason: 'insufficient_funds' } },
+    { type: 'user.signup', source: 'Custom', data: { userId: 'usr_9981', email: 'eve@example.com', plan: 'pro', signupSource: 'google_oauth' } },
+  ]
+
+  const sendTestEvent = useCallback(async () => {
+    if (!sub || sending) return
+    setSending(true)
+    const event = SAMPLE_EVENTS[Math.floor(Math.random() * SAMPLE_EVENTS.length)]
+    try {
+      const res = await fetch(sub.webhookEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-event-type': event.type },
+        body: JSON.stringify(event.data),
+      })
+      const data = await res.json()
+      if (data.received) {
+        toast.success(`Sent ${event.type} event`)
+      } else {
+        toast(`Event filtered out (${event.type} not in filter)`, { icon: '🔕' })
+      }
+    } catch {
+      toast.error('Failed to send test event')
+    } finally {
+      setSending(false)
+    }
+  }, [sub, sending])
 
   const { data: sub, isLoading: subLoading } = useQuery({
     queryKey: ['subscription', id],
@@ -114,6 +146,33 @@ export default function SubscriptionDetailPage() {
                 {copiedEndpoint ? <Check size={14} /> : <Copy size={14} />}
               </button>
             </div>
+          </Card>
+
+          {/* Send test event */}
+          <Card eyebrow="Quick test">
+            <p style={{ font: '12px var(--font-sans)', color: 'var(--fg-3)', margin: '0 0 12px' }}>
+              Fire a sample webhook event to test your setup. Picks a random event type (Stripe, GitHub, Shopify, etc).
+            </p>
+            <button
+              onClick={sendTestEvent}
+              disabled={sending || !sub.isActive}
+              style={{
+                width: '100%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                padding: '10px 0',
+                background: sending ? 'var(--surface-2)' : 'var(--accent)',
+                color: sending ? 'var(--fg-3)' : '#fff',
+                border: 'none',
+                borderRadius: 'var(--radius-md)',
+                font: '600 13px var(--font-sans)',
+                cursor: sending || !sub.isActive ? 'not-allowed' : 'pointer',
+                transition: 'opacity 150ms',
+                opacity: !sub.isActive ? 0.5 : 1,
+              }}
+            >
+              <Zap size={14} />
+              {sending ? 'Sending…' : 'Send test event'}
+            </button>
           </Card>
         </div>
 
